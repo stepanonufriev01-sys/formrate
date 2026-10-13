@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FormRate — Спортивный рейтинг формы</title>
+    <!-- Подключаем Tailwind CSS для быстрого и крутого дизайна -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Подключаем клиент Supabase для базы данных -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0d0d0f',
+                        cardBg: '#16161a',
+                        neonRed: '#ff2a00',
+                        neonGold: '#ffc700'
+                    },
+                    fontFamily: {
+                        sans: ['Montserrat', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .clip-brutal {
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+        }
+        .clip-btn {
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+    </style>
+</head>
+<body class="bg-darkBg text-white font-sans min-h-screen flex flex-col justify-between selection:bg-neonRed selection:text-white">
+
+    <!-- НАСТРОЙКИ СУПАБЕЙС -->
+    <script>
+        const SUPABASE_URL = 'https://tqffebzdnbgtfhrzzwno.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_uIgYBVnpnOoFfjohWfeYPw_79qxV2vn';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+
+    <!-- ШАПКА -->
+    <header class="border-b border-zinc-800 bg-darkBg/90 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <span class="text-3xl font-black italic tracking-tighter text-neonRed">FORM<span class="text-white">RATE</span></span>
+                <span class="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded font-mono">v1.0</span>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <button onclick="switchLang()" id="langBtn" class="text-xs font-bold uppercase tracking-wider bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 clip-btn transition">RU / EN</button>
+                <button onclick="openProModal()" class="text-xs font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-neonGold text-black px-3 py-1.5 clip-btn shadow-lg shadow-amber-500/20 hover:scale-105 transition">PRO Pass</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ОСНОВНОЙ КОНТЕНТ -->
+    <main class="max-w-xl mx-auto px-4 py-8 flex-grow w-full">
+        
+        <!-- ПРОГРЕСС БАР (ОЦЕНИ 3 ЧЕЛОВЕКА) -->
+        <div id="questBox" class="bg-cardBg border-l-4 border-neonRed p-4 mb-6 clip-brutal shadow-xl">
+            <div class="flex justify-between items-center mb-2">
+                <span id="questTitle" class="text-sm font-bold uppercase tracking-wider text-zinc-300">Чтобы опубликовать форму, оцени участников:</span>
+                <span id="questCounter" class="text-neonRed font-black text-lg">0 / 3</span>
+            </div>
+            <div class="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
+                <div id="questBar" class="bg-neonRed h-full w-0 transition-all duration-300"></div>
+            </div>
+        </div>
+
+        <!-- КАРТОЧКА ДЛЯ ОЦЕНКИ АТЛЕТА -->
+        <div id="rateSection" class="bg-cardBg border border-zinc-800 p-5 mb-8 clip-brutal relative">
+            <div class="absolute top-3 right-3 bg-zinc-900/80 px-2.5 py-1 rounded text-xs font-mono text-zinc-400" id="cardBadge">Атлет #1</div>
+            
+            <div class="w-full h-80 bg-zinc-900 mb-4 overflow-hidden clip-brutal flex items-center justify-center border border-zinc-800">
+                <img id="ratePhoto" src="https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=800&q=80" alt="Athlete Form" class="w-full h-full object-cover">
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+                <div class="bg-zinc-900/60 p-2 border border-zinc-800/60">
+                    <div class="text-[10px] uppercase text-zinc-500 font-bold" data-i18n="height">Рост</div>
+                    <div id="rateHeight" class="text-lg font-black text-white">182 см</div>
+                </div>
+                <div class="bg-zinc-900/60 p-2 border border-zinc-800/60">
+                    <div class="text-[10px] uppercase text-zinc-500 font-bold" data-i18n="weight">Вес</div>
+                    <div id="rateWeight" class="text-lg font-black text-white">84 кг</div>
+                </div>
+                <div class="bg-zinc-900/60 p-2 border border-zinc-800/60">
+                    <div class="text-[10px] uppercase text-zinc-500 font-bold" data-i18n="exp">Стаж</div>
+                    <div id="rateExp" class="text-lg font-black text-white">3 года</div>
+                </div>
+            </div>
+
+            <!-- ИНТЕРАКТИВНОЕ ГОЛОСОВАНИЕ -->
+            <div class="space-y-3">
+                <div class="flex justify-between text-xs font-bold text-zinc-400 uppercase">
+                    <span data-i18n="ratePrompt">Оцени форму (1-10):</span>
+                    <span id="scoreVal" class="text-neonRed font-black text-base">8</span>
+                </div>
+                <input type="range" id="scoreSlider" min="1" max="10" value="8" class="w-full accent-neonRed cursor-pointer bg-zinc-800 h-2 rounded" oninput="document.getElementById('scoreVal').innerText = this.value">
+                <button onclick="submitRating()" class="w-full bg-neonRed hover:bg-red-700 text-white font-black uppercase tracking-wider py-3 clip-btn transition shadow-lg shadow-neonRed/30" data-i18n="sendRateBtn">
+                    Отправить оценку и далее →
+                </button>
+            </div>
+        </div>
+
+        <!-- ФОРМА ЗАГРУЗКИ СВОЕЙ АНКЕТЫ (ИЗНАЧАЛЬНО ЗАКРЫТА, ПОКА НЕ ОЦЕНИТ 3) -->
+        <div id="uploadSection" class="bg-cardBg border border-zinc-800 p-6 clip-brutal opacity-50 pointer-events-none relative transition-all duration-300">
+            <div id="lockOverlay" class="absolute inset-0 bg-darkBg/80 z-10 flex flex-col items-center justify-center p-4 text-center">
+                <span class="text-2xl mb-2">🔒</span>
+                <p id="lockText" class="text-sm font-bold text-zinc-300">Оцените еще <span id="leftCount" class="text-neonRed font-black">3</span> участников, чтобы разблокировать загрузку своей формы!</p>
+            </div>
+
+            <h2 class="text-xl font-black uppercase italic tracking-tight mb-4 text-white" data-i18n="myProfileTitle">Твоя Анкета Формы</h2>
+            
+            <form id="profileForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs uppercase font-bold text-zinc-400 mb-1" data-i18n="height">Рост (см)</label>
+                        <input type="number" id="myHeight" required class="w-full bg-zinc-900 border border-zinc-800 p-3 text-white focus:border-neonRed outline-none font-bold" placeholder="178">
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase font-bold text-zinc-400 mb-1" data-i18n="weight">Вес (кг)</label>
+                        <input type="number" id="myWeight" required class="w-full bg-zinc-900 border border-zinc-800 p-3 text-white focus:border-neonRed outline-none font-bold" placeholder="78">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs uppercase font-bold text-zinc-400 mb-1" data-i18n="expLabel">Стаж тренировок</label>
+                    <input type="text" id="myExp" required class="w-full bg-zinc-900 border border-zinc-800 p-3 text-white focus:border-neonRed outline-none font-bold" placeholder="2 года / 3 years">
+                </div>
+
+                <div>
+                    <label class="block text-xs uppercase font-bold text-zinc-400 mb-1" data-i18n="photoLabel">Фото формы (в полный рост)</label>
+                    <input type="file" id="myPhoto" accept="image/*" required class="w-full text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-xs file:font-black file:uppercase file:bg-zinc-800 file:text-white hover:file:bg-zinc-700 cursor-pointer">
+                </div>
+
+                <button type="submit" class="w-full bg-white hover:bg-zinc-200 text-black font-black uppercase tracking-wider py-3 clip-btn transition shadow-lg" data-i18n="publishBtn">
+                    Опубликовать мою анкету ⚡
+                </button>
+            </form>
+        </div>
+
+    </main>
+
+    <!-- МОДАЛКА PRO -->
+    <div id="proModal" class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-cardBg border border-amber-500/50 max-w-md w-full p-6 clip-brutal relative shadow-2xl">
+            <button onclick="closeProModal()" class="absolute top-4 right-4 text-zinc-400 hover:text-white font-black">✕</button>
+            <h3 class="text-2xl font-black italic uppercase text-amber-400 mb-2">FormRate PRO Pass</h3>
+            <p class="text-xs text-zinc-400 mb-4" data-i18n="proDesc">Получи максимум от сервиса и выведи свои результаты на новый уровень.</p>
+            <ul class="space-y-2 text-sm mb-6 text-zinc-300">
+                <li>✅ Детальный разбор пропорций (V-Taper, плечи/талия)</li>
+                <li>✅ Безлимитный доступ без необходимости оценивать других</li>
+                <li>✅ Значок PRO-атлета в профиле</li>
+            </ul>
+            <button onclick="alert('Интеграция платежной системы в разработке!')" class="w-full bg-gradient-to-r from-amber-500 to-neonGold text-black font-black uppercase py-3 clip-btn">Купить PRO за $4.99 / мес</button>
+        </div>
+    </div>
+
+    <!-- ФУТЕР -->
+    <footer class="border-t border-zinc-800 py-6 text-center text-xs text-zinc-500">
+        &copy; 2026 FormRate. All rights reserved. Brutal Fitness Community.
+    </footer>
+
+    <!-- СКРИПТЫ ЛОГИКИ И ЯЗЫКОВ -->
+    <script>
+        let currentLang = 'ru';
+        let ratingsGivenCount = 0;
+        const targetRatings = 3;
+
+        const translations = {
+            ru: {
+                height: "Рост", weight: "Вес", exp: "Стаж",
+                questTitle: "Чтобы опубликовать форму, оцени участников:",
+                ratePrompt: "Оцени форму (1-10):",
+                sendRateBtn: "Отправить оценку и далее →",
+                myProfileTitle: "Твоя Анкета Формы",
+                expLabel: "Стаж тренировок",
+                photoLabel: "Фото формы (в полный рост)",
+                publishBtn: "Опубликовать мою анкету ⚡",
+                lockText: "Оцените еще участников, чтобы разблокировать загрузку своей формы!",
+                proDesc: "Получи максимум от сервиса и выведи свои результаты на новый уровень."
+            },
+            en: {
+                height: "Height", weight: "Weight", exp: "Exp",
+                questTitle: "Rate members to publish your form:",
+                ratePrompt: "Rate form (1-10):",
+                sendRateBtn: "Submit rating & next →",
+                myProfileTitle: "Your Form Profile",
+                expLabel: "Training Experience",
+                photoLabel: "Full body photo",
+                publishBtn: "Publish My Form ⚡",
+                lockText: "Rate more members to unlock your profile upload!",
+                proDesc: "Get maximum features and take your physique to the next level."
+            }
+        };
+
+        function switchLang() {
+            currentLang = currentLang === 'ru' ? 'en' : 'ru';
+            document.getElementById('langBtn').innerText = currentLang.toUpperCase();
+            
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) {
+                    el.innerText = translations[currentLang][key];
+                }
+            });
+        }
+
+        function submitRating() {
+            ratingsGivenCount++;
+            updateQuestProgress();
+            
+            // Заглушка переключения на следующую карточку
+            document.getElementById('rateHeight').innerText = (175 + Math.floor(Math.random() * 10)) + ' см';
+            document.getElementById('rateWeight').innerText = (75 + Math.floor(Math.random() * 15)) + ' кг';
+            document.getElementById('cardBadge').innerText = `Атлет #${ratingsGivenCount + 1}`;
+        }
+
+        function updateQuestProgress() {
+            const left = targetRatings - ratingsGivenCount;
+            document.getElementById('questCounter').innerText = `${ratingsGivenCount} / ${targetRatings}`;
+            document.getElementById('questBar').style.width = `${(ratingsGivenCount / targetRatings) * 100}%`;
+            document.getElementById('leftCount').innerText = left > 0 ? left : 0;
+
+            if (ratingsGivenCount >= targetRatings) {
+                // Разблокируем форму
+                const uploadSec = document.getElementById('uploadSection');
+                uploadSec.classList.remove('opacity-50', 'pointer-events-none');
+                document.getElementById('lockOverlay').style.display = 'none';
+                document.getElementById('questBox').classList.add('border-green-500');
+                document.getElementById('questTitle').innerText = currentLang === 'ru' ? '✅ Цель выполнена! Загружайте свою форму:' : '✅ Goal met! Upload your form now:';
+            }
+        }
+
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            const height = document.getElementById('myHeight').value;
+            const weight = document.getElementById('myWeight').value;
+            const exp = document.getElementById('myExp').value;
+            const photoFile = document.getElementById('myPhoto').files[0];
+
+            if (!photoFile) return alert('Загрузите фото!');
+
+            try {
+                // 1. Загрузка фото в Supabase Storage
+                const fileName = `${Date.now()}_${photoFile.name}`;
+                const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                    .from('form-photos')
+                    .upload(fileName, photoFile);
+
+                if (uploadError) throw uploadError;
+
+                // Получаем публичную ссылку на фото
+                const { data: publicUrlData } = supabaseClient.storage
+                    .from('form-photos')
+                    .getPublicUrl(fileName);
+
+                const photoUrl = publicUrlData.publicUrl;
+
+                // 2. Сохранение данных профиля в базу данных Supabase
+                const { error: dbError } = await supabaseClient
+                    .from('profiles')
+                    .insert([{ height, weight, experience: exp, photo_url: photoUrl, ratings_given: ratingsGivenCount }]);
+
+                if (dbError) throw dbError;
+
+                alert(currentLang === 'ru' ? '⚡ Анкета успешно опубликована в базе FormRate!' : '⚡ Profile successfully published!');
+                location.reload();
+
+            } catch (err) {
+                console.error(err);
+                alert('Ошибка при сохранении: ' + err.message);
+            }
+        }
+
+        function openProModal() { document.getElementById('proModal').classList.remove('hidden'); }
+        function closeProModal() { document.getElementById('proModal').classList.add('hidden'); }
+    </script>
+</body>
+</html>
